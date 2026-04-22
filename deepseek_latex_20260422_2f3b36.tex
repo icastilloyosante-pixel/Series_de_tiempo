@@ -1,0 +1,367 @@
+\documentclass[12pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{fullpage}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\title{Series de Tiempo para Finanzas \\ Pregunta \& Respuesta — Nivel Quant \\ ARIMA(p, d, q) · SARIMA · SARIMAX · Pronóstico}
+\author{Dr. César Galindo \\ Universidad Panamericana - Ciudad UP · Facultad de Ciencias Empresariales}
+\date{Verano 2026}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Procesos estacionarios y fundamentos}
+
+\subsection{Ejercicio 1.1 — Estacionariedad, ACF y PACF}
+
+Defina estacionariedad débil y estricta. Dé un ejemplo de un proceso débilmente estacionario que no sea estrictamente estacionario.
+
+\subsubsection*{Respuesta 1.1 (a)}
+
+\textbf{Contexto y motivación.} La estacionariedad es la propiedad fundamental que hace posible la inferencia estadística en series de tiempo: si los parámetros del proceso cambian con el tiempo, no podemos aprender nada estable de los datos. En finanzas cuantitativas, trabajar con series no estacionarias sin las transformaciones adecuadas conduce a regresiones espurias, intervalos de confianza incorrectos y estrategias de trading con rendimientos ilusorios.
+
+\textbf{Estacionariedad débil (de covarianza).} El proceso $\{Y_t\}_{t\in\mathbb{Z}}$ es débilmente estacionario (o estacionario de segundo orden) si:
+\begin{enumerate}[label=(\roman*)]
+    \item $\mathbb{E}[Y_t] = \mu \; \forall t$ (media constante, independiente del tiempo),
+    \item $\mathbb{E}[Y_t^2] < \infty \; \forall t$ (varianza finita),
+    \item $\text{Cov}(Y_t, Y_{t-k}) = \gamma(k) \; \forall t,k$ (la autocovarianza depende sólo del rezago $k$, no de $t$).
+\end{enumerate}
+La función $\gamma: \mathbb{Z} \to \mathbb{R}$ se llama función de autocovarianza (ACVF). Nótese que $\gamma(0) = \text{Var}(Y_t)$ es la varianza del proceso.
+
+\textbf{Estacionariedad estricta.} El proceso es estrictamente estacionario si para todo $m \geq 1$, todo $(t_1, \dots, t_m) \in \mathbb{Z}^m$ y todo $h \in \mathbb{Z}$:
+\[
+(Y_{t_1}, \dots, Y_{t_m}) \stackrel{d}{=} (Y_{t_1+h}, \dots, Y_{t_m+h}).
+\]
+En palabras: la distribución conjunta de cualquier subconjunto finito de la serie es invariante a traslaciones en el tiempo.
+
+\textbf{Relación entre ambas.} La estricta implica la débil (siempre que existan los segundos momentos), pero no viceversa. La excepción es cuando el proceso es gaussiano: un proceso gaussiano es estrictamente estacionario si y sólo si es débilmente estacionario, porque la distribución gaussiana queda completamente determinada por su media y covarianza.
+
+\textbf{Ejemplo canónico.} Sea
+\[
+Y_t = A \cos(\omega t) + B \sin(\omega t),
+\]
+donde $A$ y $B$ son variables aleatorias independientes con $\mathbb{E}[A] = \mathbb{E}[B] = 0$ y $\text{Var}(A) = \text{Var}(B) = \sigma^2$, y $\omega \in (0, \pi)$ es una frecuencia fija.
+
+Verificación de estacionariedad débil:
+\begin{align*}
+\mathbb{E}[Y_t] &= \mathbb{E}[A] \cos(\omega t) + \mathbb{E}[B] \sin(\omega t) = 0. \\
+\text{Cov}(Y_t, Y_{t-k}) &= \mathbb{E}[Y_t Y_{t-k}] \\
+&= \sigma^2 [\cos(\omega t) \cos(\omega(t-k)) + \sin(\omega t) \sin(\omega(t-k))] = \sigma^2 \cos(\omega k),
+\end{align*}
+que depende únicamente de $k \Rightarrow$ débilmente estacionario.
+
+Por qué no es estrictamente estacionario en general: Cuando $t=0$, $Y_0 = A$; cuando $t = \pi/(2\omega)$, $Y_t = B$. Si $A$ y $B$ tienen distribuciones distintas (e.g., $A\sim U(-1,1)$, $B\sim \text{Laplace}(0,1/\sqrt{2})$), entonces $Y_0$ e $Y_t$ tienen distribuciones marginales distintas.
+
+\subsubsection*{Respuesta 1.1 (b)}
+
+Demuestre que $|\rho(k)| \leq 1$ y que $\rho(k) = \rho(-k)$.
+
+\textbf{Simetría $\rho(k) = \rho(-k)$.} Por la definición de covarianza y estacionariedad:
+\[
+\gamma(k) = \text{Cov}(Y_t, Y_{t-k}) = \text{Cov}(Y_{t-k}, Y_t) = \gamma(-k) \implies \rho(-k) = \frac{\gamma(-k)}{\gamma(0)} = \frac{\gamma(k)}{\gamma(0)} = \rho(k).
+\]
+
+\textbf{Cota $|\rho(k)| \leq 1$.} Por la desigualdad de Cauchy-Schwarz aplicada a las variables centradas $\tilde{Y}_t = Y_t - \mu$:
+\[
+|\mathbb{E}[\tilde{Y}_t \tilde{Y}_{t-k}]|^2 \leq \mathbb{E}[\tilde{Y}_t^2] \cdot \mathbb{E}[\tilde{Y}_{t-k}^2] = \gamma(0)^2 \implies |\gamma(k)| \leq \gamma(0) \implies |\rho(k)| \leq 1.
+\]
+
+\subsubsection*{Respuesta 1.1 (c)}
+
+Sea $Y_t = 0.6Y_{t-1} + \varepsilon_t$ con $\varepsilon_t \sim \text{WN}(0, \sigma^2)$. Calcule $\text{Var}(Y_t)$, $\text{Cov}(Y_t, Y_{t-1})$ y demuestre que $\rho(k) = 0.6^k$ para $k \geq 0$.
+
+\textbf{Varianza.} Tomando varianza a ambos lados:
+\[
+\gamma(0) = 0.6^2\gamma(0) + \sigma^2 \implies \gamma(0) = \frac{\sigma^2}{1 - 0.6^2} = \frac{\sigma^2}{0.64}.
+\]
+
+\textbf{Covarianza.} Multiplicando la ecuación por $Y_{t-1}$ y tomando esperanza:
+\[
+\gamma(1) = 0.6\gamma(0) = \frac{0.6\sigma^2}{0.64}.
+\]
+
+\textbf{Demostración de $\rho(k) = 0.6^k$.} Para $k \geq 1$:
+\[
+\gamma(k) = 0.6\gamma(k-1) \implies \gamma(k) = 0.6^k \gamma(0) \implies \rho(k) = \frac{\gamma(k)}{\gamma(0)} = 0.6^k.
+\]
+
+\subsubsection*{Respuesta 1.1 (d)}
+
+Describa el patrón de ACF y PACF de un AR(1) con $\phi > 0$, un MA(1) con $\theta > 0$, y un ruido blanco.
+
+\textbf{Patrones teóricos:}
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Modelo} & \textbf{ACF $\rho(k)$} & \textbf{PACF $\alpha(k)$} \\
+\hline
+AR(1), $\phi > 0$ & Decae exponencialmente: $\rho(k) = \phi^k > 0$ & Se corta en rezago 1: $\alpha(1)=\phi$, $\alpha(k)=0$ para $k\geq 2$ \\
+MA(1), $\theta > 0$ & Se corta en rezago 1: $\rho(1)=\theta/(1+\theta^2)$, $\rho(k)=0$ para $k\geq 2$ & Decae exponencialmente \\
+Ruido blanco & $\rho(k) \approx 0$ para todo $k\geq 1$ & $\alpha(k) \approx 0$ para todo $k\geq 1$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{¿Por qué sirven para identificar el orden?}
+\begin{itemize}
+    \item Para AR($p$): La PACF se corta en el rezago $p$.
+    \item Para MA($q$): La ACF se corta exactamente en $q$.
+    \item Para ARMA($p,q$): Ninguna de las dos funciones se corta abruptamente.
+\end{itemize}
+
+\subsection{Ejercicio 1.2 — Procesos AR, MA y ARMA}
+
+Para el AR(2): $Y_t = 1.2Y_{t-1} - 0.32Y_{t-2} + \varepsilon_t$. Calcule las raíces del polinomio $\Phi(z) = 1 - 1.2z + 0.32z^2$ y determine si el proceso es estacionario.
+
+\subsubsection*{Respuesta 1.2(a)}
+
+Igualando $\Phi(z)=0$:
+\[
+0.32z^2 - 1.2z + 1 = 0 \implies z = \frac{1.2 \pm \sqrt{1.44 - 1.28}}{0.64} = \frac{1.2 \pm 0.4}{0.64}.
+\]
+\[
+z_1 = \frac{1.6}{0.64} = 2.5, \quad z_2 = \frac{0.8}{0.64} = 1.25.
+\]
+Como $|z_1|=2.5>1$ y $|z_2|=1.25>1$, el proceso AR(2) es estacionario.
+
+\subsubsection*{Respuesta 1.2(b)}
+
+Para el MA(2): $Y_t = \varepsilon_t + 0.5\varepsilon_{t-1} - 0.3\varepsilon_{t-2}$.
+
+\begin{align*}
+\gamma(0) &= \sigma^2(1 + 0.25 + 0.09) = 1.34\sigma^2, \\
+\gamma(1) &= \sigma^2(1\cdot 0.5 + 0.5\cdot(-0.3)) = 0.35\sigma^2, \\
+\gamma(2) &= \sigma^2(1)(-0.3) = -0.3\sigma^2, \\
+\gamma(k) &= 0 \quad \text{para } k \geq 3.
+\end{align*}
+
+\subsubsection*{Respuesta 1.2(c)}
+
+Un MA($q$) es invertible si todas las raíces del polinomio $\Theta(z)=1+\theta_1z+\cdots+\theta_qz^q$ están fuera del círculo unitario ($|z_i|>1$). Esto permite recuperar los errores $\varepsilon_t$ a partir de las observaciones pasadas, esencial para el pronóstico.
+
+\subsubsection*{Respuesta 1.2(d)}
+
+Para un AR(1) estacionario con $|\phi|<1$:
+\[
+Y_t = \varepsilon_t + \phi Y_{t-1} = \varepsilon_t + \phi(\varepsilon_{t-1}+\phi Y_{t-2}) = \sum_{j=0}^{n} \phi^j \varepsilon_{t-j} + \phi^{n+1}Y_{t-n-1} \xrightarrow[n\to\infty]{\text{m.c.}} \sum_{j=0}^{\infty} \phi^j \varepsilon_{t-j}.
+\]
+
+\subsection{Ejercicio 1.3 — Raíces unitarias y prueba de Dickey-Fuller}
+
+Demuestre que la caminata aleatoria $Y_t = Y_{t-1} + \varepsilon_t$ no es estacionaria calculando $\text{Var}(Y_t)=t\sigma^2$ y $\text{Cov}(Y_t, Y_s)=\min(s,t)\sigma^2$.
+
+\subsubsection*{Respuesta 1.3(a)}
+
+Con $Y_0=0$, $Y_t = \sum_{i=1}^t \varepsilon_i$. Entonces:
+\[
+\text{Var}(Y_t) = t\sigma^2, \quad \text{Cov}(Y_t, Y_s) = \min(s,t)\sigma^2.
+\]
+
+\subsubsection*{Respuesta 1.3(b)}
+
+$\Delta Y_t = Y_t - Y_{t-1} = \varepsilon_t$.
+
+\subsubsection*{Respuesta 1.3(c)}
+
+Bajo $H_0: \delta=0$ en $\Delta Y_t = \mu + \delta Y_{t-1} + \sum_{j=1}^k \psi_j \Delta Y_{t-j} + \varepsilon_t$, el estadístico $t_{\hat{\delta}}$ no sigue una distribución $t$ clásica porque $Y_{t-1}$ es I(1). Su distribución límite es la de Dickey-Fuller, asimétrica y con valores críticos más negativos.
+
+\subsubsection*{Respuesta 1.3(d)}
+
+Los log-precios suelen ser I(1) (varianza creciente, sin media de largo plazo), mientras que los log-retornos son I(0) (estacionarios). Por ello se modelan retornos, no precios.
+
+\newpage
+\section{Modelos ARIMA(p, d, q)}
+
+\subsection{Ejercicio 2.1 — Identificación, estimación y diagnóstico}
+
+\subsubsection*{Respuesta 2.1(a)}
+\begin{itemize}
+    \item[(i)] ACF decae exponencialmente; PACF se corta en rezago 2 $\Rightarrow$ AR(2).
+    \item[(ii)] ACF se corta en rezago 1; PACF decae $\Rightarrow$ MA(1).
+    \item[(iii)] Ambas decaen sin cortarse $\Rightarrow$ ARMA(p,q).
+    \item[(iv)] ACF con pico sólo en rezago 1 $\Rightarrow$ MA(1).
+\end{itemize}
+
+\subsubsection*{Respuesta 2.1(b)}
+
+\[
+\text{AIC} = -2\log\hat{L} + 2k, \quad \text{BIC} = -2\log\hat{L} + k\log n.
+\]
+AIC es eficiente (mejor predicción), BIC es consistente (selecciona modelo verdadero cuando $n\to\infty$). BIC penaliza más cuando $n>7$.
+
+\subsubsection*{Respuesta 2.1(c)}
+
+Procedimiento de Box-Jenkins:
+\begin{enumerate}
+    \item \textbf{Identificación}: Gráficas de la serie, ACF, PACF, prueba ADF.
+    \item \textbf{Estimación}: Máxima verosimilitud, comparación con AIC/BIC.
+    \item \textbf{Diagnóstico}: Análisis de residuos (ACF, Ljung-Box, normalidad).
+\end{enumerate}
+
+\subsubsection*{Respuesta 2.1(d)}
+
+Estadístico de Ljung-Box:
+\[
+Q(h) = n(n+2)\sum_{k=1}^h \frac{\hat{\rho}_k^2}{n-k} \xrightarrow{\mathcal{L}} \chi^2(h-p-q).
+\]
+
+\subsection{Ejercicio 2.2 — ARIMA(1,1,1) para log-precios}
+
+\subsubsection*{Respuesta 2.2(a)}
+
+Sea $r_t = \Delta y_t$. El ARIMA(1,1,1) se convierte en ARMA(1,1) para $r_t$:
+\[
+r_t = \varphi_1 r_{t-1} + \varepsilon_t + \theta_1 \varepsilon_{t-1}.
+\]
+
+\subsubsection*{Respuesta 2.2(b) y (c)}
+
+Con $\hat{\varphi}_1=0.15$, $\hat{\theta}_1=-0.08$:
+\[
+\hat{r}_{T+1|T} = 0.15 r_T - 0.08 \hat{\varepsilon}_T.
+\]
+Intervalo para $P_{T+1}$:
+\[
+\left[ P_T e^{\hat{r}_{T+1|T}-1.96\hat{\sigma}}, P_T e^{\hat{r}_{T+1|T}+1.96\hat{\sigma}} \right].
+\]
+
+\subsubsection*{Respuesta 2.2(d)}
+
+No. El ARIMA(1,1,1) no captura el efecto apalancamiento. Se necesitan modelos EGARCH o GJR-GARCH.
+
+\subsection{Ejercicio 2.3 — Pronóstico con ARIMA(2,1,0)}
+
+\subsubsection*{Respuesta 2.3}
+
+(a) $W_t = 0.5W_{t-1} - 0.2W_{t-2} + \varepsilon_t$.
+
+(b) $\hat{W}_{T+1|T}=0.44$, $\hat{W}_{T+2|T}=-0.02$.
+
+(c) $\psi_0=1$, $\psi_1=0.5$, $\psi_2=0.05$. $\text{MSE}_1=1.00$, $\text{MSE}_2=1.25$.
+
+(d) Intervalos para $Y$: $Y_{T+1}\in[98.48,102.40]$, $Y_{T+2}\in[98.23,102.61]$.
+
+\subsection{Ejercicio 2.4 — Cointegración y spreads estadísticos}
+
+\subsubsection*{Respuesta 2.4}
+
+(a) Teorema de Granger: Si $Y_t$ y $X_t$ son I(1) y cointegrados, existe una representación de corrección de error (VECM).
+
+(b) Procedimiento de Engle-Granger: regresión MCO, prueba ADF sobre residuos.
+
+(c) Para spread AR(1): $\mathbb{E}[Z_t]=\mu/(1-\varphi)$, $\text{Var}(Z_t)=\sigma^2/(1-\varphi^2)$, $\mathbb{E}[\tau_\mu]=1/(1-\varphi)$.
+
+(d) Con $\varphi=0.95$, $\mu=0$, $\sigma=0.01$: $\text{SD}(Z_t)\approx0.032$, $\mathbb{E}[\tau_\mu]=20$.
+
+\newpage
+\section{Modelos SARIMA y estacionalidad}
+
+\subsection{Ejercicio 3.1 — Estructura y notación SARIMA}
+
+\subsubsection*{Respuesta 3.1(a) y (b)}
+
+SARIMA(1,1,1)(1,1,1)$_{12}$:
+\[
+(1-\Phi_1 B^{12})(1-\varphi_1 B)(1-B^{12})(1-B)Y_t = (1+\Theta_1 B^{12})(1+\theta_1 B)\varepsilon_t.
+\]
+\[
+(1-B)(1-B^{12})Y_t = Y_t - Y_{t-1} - Y_{t-12} + Y_{t-13}.
+\]
+
+\subsubsection*{Respuesta 3.1(c) y (d)}
+
+(d) Para ventas minoristas mensuales: $d=1$, $D=1$.
+
+\subsection{Ejercicio 3.2 — Modelo de Airline}
+
+\subsubsection*{Respuesta 3.2}
+
+(a) SARIMA(0,1,1)(0,1,1)$_{12}$:
+\[
+(1-B)(1-B^{12})Y_t = (1+\theta_1 B)(1+\Theta_1 B^{12})\varepsilon_t.
+\]
+
+\subsection{Ejercicio 3.3 — SARIMA para CETES}
+
+\subsubsection*{Respuesta 3.3}
+
+(a) Propuesta: SARIMA(1,1,0)(1,1,0)$_{13}$.
+
+\subsection{Ejercicio 3.4 — Descomposición STL}
+
+\subsubsection*{Respuesta 3.4}
+
+(d) $FS = \max\left\{0, 1 - \frac{\text{Var}(R_t)}{\text{Var}(S_t+R_t)}\right\}$.
+
+\newpage
+\section{Modelos SARIMAX con variables exógenas}
+
+\subsection{Ejercicio 4.1 — ARIMAX}
+
+\subsubsection*{Respuesta 4.1}
+
+(a) ARIMAX modela conjuntamente la dinámica de los errores, a diferencia de la regresión clásica que supone errores i.i.d.
+
+\subsection{Ejercicio 4.2 — SARIMAX demanda eléctrica}
+
+\subsubsection*{Respuesta 4.2}
+
+(a) $(1-B^{24})(1-B)D_t = \beta_1 \text{Temp}_t + \varepsilon_t$ con $\beta_1>0$ en verano.
+
+\subsection{Ejercicio 4.3 — SARIMAX ventas con calendario}
+
+\subsubsection*{Respuesta 4.3}
+
+(a) $\beta_1$: efecto de festivos; $\beta_2$: elasticidad precio.
+
+\newpage
+\section{Simulación, Yule-Walker e interpretación gráfica}
+
+\subsection{Ejercicio 5.1 — Yule-Walker}
+
+\subsubsection*{Respuesta 5.1}
+
+(a) Para AR(1): $\phi_1 = \rho(1)$.
+
+(b) Para AR(2) con $\phi_1=0.6$, $\phi_2=-0.2$: $\gamma(1)=0.5\gamma(0)$, $\gamma(2)=0.1\gamma(0)$.
+
+\subsection{Ejercicio 5.2 — Simulación AR(2)}
+
+\subsubsection*{Respuesta 5.2}
+
+(c) Raíces complejas con módulo $\approx 1.826 > 1$.
+
+\subsection{Ejercicio 5.3 — Tabla de rendimientos IPC}
+
+\subsubsection*{Respuesta 5.3}
+
+(b) $\hat{\phi}_1=0.12$, IC 95\%: $[-0.055, 0.295]$.
+
+\subsection{Ejercicio 5.4 — Simulación SARIMA estacional}
+
+\subsubsection*{Respuesta 5.4}
+
+(b) $\rho(1) = \theta_1/(1+\theta_1^2) = -0.4$, $\rho(12)=\Phi_1=0.8$, $\rho(13)=-0.32$, $\rho(24)=0.64$.
+
+\subsection{Ejercicio 5.5 — Comparación de modelos}
+
+\subsubsection*{Respuesta 5.5}
+
+(b) Amplitud del IC al 95\% para $h=6$: $\approx 1.04$ MXN/USD.
+
+\subsection{Ejercicio 5.6 — Monte Carlo}
+
+\subsubsection*{Respuesta 5.6}
+
+(a) $Y_{T+h}|Y_T=y_0 \sim \mathcal{N}\left(\phi_1^h y_0, \sigma^2\frac{1-\phi_1^{2h}}{1-\phi_1^2}\right)$.
+
+\end{document}

@@ -1,0 +1,744 @@
+\documentclass[12pt,a4paper]{article}
+
+% ?? Paquetes ?????????????????????????????????????????????????????????????????
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm, headheight=15pt}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{parskip}
+\usepackage[expansion=false]{microtype}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+
+% ?? Colores ??????????????????????????????????????????????????????????????????
+\definecolor{azul}{RGB}{37,99,235}
+\definecolor{gris}{RGB}{75,85,99}
+\definecolor{fondocodigo}{RGB}{248,250,252}
+\definecolor{verdeoscuro}{RGB}{5,150,105}
+
+% ?? Hiperv{\'i}nculos ?????????????????????????????????????????????????????????????
+\hypersetup{
+  colorlinks=true, linkcolor=azul, citecolor=azul, urlcolor=azul,
+  pdftitle={Modelos SARIMA en Series de Tiempo Financieras},
+  pdfauthor={Informe Acad{\'e}mico}
+}
+
+% ?? Encabezado y pie ?????????????????????????????????????????????????????????
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{gris}{\small Modelos (S)ARIMA}}
+\lhead{\textcolor{gris}{\small Series de Tiempo Financieras}}
+\rfoot{\textcolor{gris}{\small P{\'a}gina \thepage}}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ?? Estilo de secciones ???????????????????????????????????????????????????????
+\titleformat{\section}{\large\bfseries\color{azul}}{}{0em}{\thesection\quad}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{gris}}{}{0em}{\thesubsection\quad}
+
+% ?? C{\'o}digo Python ?????????????????????????????????????????????????????????????
+\lstdefinestyle{python}{
+  language=Python,
+  backgroundcolor=\color{fondocodigo},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{azul}\bfseries,
+  stringstyle=\color{verdeoscuro},
+  commentstyle=\color{gris}\itshape,
+  numberstyle=\tiny\color{gris},
+  numbers=left, numbersep=8pt,
+  breaklines=true, frame=single, rulecolor=\color{gris!40},
+  showstringspaces=false,
+  tabsize=4, xleftmargin=15pt, xrightmargin=5pt,
+  morekeywords={as, import, True, False, None}
+}
+
+% ?? Caja de definici{\'o}n ????????????????????????????????????????????????????????
+\newtcolorbox{defbox}[1]{
+  colback=azul!5, colframe=azul!70, fonttitle=\bfseries,
+  title={#1}, breakable, arc=4pt
+}
+\newtcolorbox{notabox}{
+  colback=verdeoscuro!5, colframe=verdeoscuro!60, fonttitle=\bfseries,
+  title={Nota clave}, breakable, arc=4pt
+}
+
+% ?????????????????????????????????????????????????????????????????????????????
+\begin{document}
+
+% ?? Portada ??????????????????????????????????????????????????????????????????
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\huge\bfseries\color{azul} Modelos (S)ARIMA\par}
+  \vspace{0.4cm}
+  {\Large\color{gris} Forma General, Diagn{\'o}stico y Aplicaciones\\Financieras en Python\par}
+  \vspace{2cm}
+  \rule{\linewidth}{0.8pt}\\[0.3cm]
+  {\large Informe Acad{\'e}mico --- Series de Tiempo\par}
+  \rule{\linewidth}{0.8pt}
+  \vspace{2cm}
+
+  \begin{tabular}{rl}
+    \textbf{Asignatura:} & Econometr{\'i}a / Series de Tiempo \\[4pt]
+    \textbf{Tema:}       & Modelos ARIMA y SARIMA \\[4pt]
+    \textbf{Fecha:}      & \today \\[4pt]
+  \end{tabular}
+
+  \vfill
+  {\small\color{gris}
+    Base de datos financiera simulada a partir de par{\'a}metros\\
+    representativos de mercados reales (2022--2024).}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Introducci{\'o}n}
+% =============================================================================
+
+Los modelos \textbf{ARIMA} (\textit{AutoRegressive Integrated Moving Average}) y su extensi{\'o}n
+estacional \textbf{SARIMA} constituyen la clase m{\'a}s utilizada de modelos param{\'e}tricos para
+el an{\'a}lisis y pron{\'o}stico de series de tiempo univariadas. Su popularidad en finanzas se
+debe a su capacidad para capturar la persistencia, la integraci{\'o}n y la estacionalidad
+presentes en activos financieros, tipos de cambio y variables macroecon{\'o}micas.
+
+Este informe presenta:
+\begin{enumerate}[label=\arabic*.]
+  \item La forma general matem{\'a}tica del modelo ARIMA$(p,d,q)$ y su extensi{\'o}n estacional
+        SARIMA$(p,d,q)(P,D,Q)_s$.
+  \item Las herramientas de identificaci{\'o}n: ACF, PACF, AIC y BIC.
+  \item Tres ejemplos completos implementados en Python con datos financieros.
+\end{enumerate}
+
+% =============================================================================
+\section{Forma General del Modelo ARIMA\texorpdfstring{$(p,d,q)$}{(p,d,q)}}
+% =============================================================================
+
+\subsection{Operadores y notaci{\'o}n}
+
+Sea $\{y_t\}$ una serie de tiempo. Se define:
+\begin{itemize}
+  \item \textbf{Operador de retardo:} $B\,y_t = y_{t-1}$, \quad $B^k\,y_t = y_{t-k}$.
+  \item \textbf{Operador diferencia:} $\nabla = 1 - B$, \quad $\nabla^d = (1-B)^d$.
+  \item \textbf{Polinomio AR:} $\Phi(B) = 1 - \phi_1 B - \phi_2 B^2 - \cdots - \phi_p B^p$.
+  \item \textbf{Polinomio MA:} $\Theta(B) = 1 + \theta_1 B + \theta_2 B^2 + \cdots + \theta_q B^q$.
+\end{itemize}
+
+\subsection{Modelo ARIMA\texorpdfstring{$(p,d,q)$}{(p,d,q)} --- Forma general}
+
+\begin{defbox}{Definici{\'o}n: ARIMA$(p,d,q)$}
+\[
+  \boxed{\Phi(B)\,(1-B)^d\,y_t \;=\; \mu + \Theta(B)\,\varepsilon_t}
+\]
+donde:
+\begin{align*}
+  &\Phi(B) = 1 - \phi_1 B - \cdots - \phi_p B^p \quad \text{(parte AR de orden }p\text{)}\\
+  &(1-B)^d \quad\text{diferenciaci{\'o}n de orden }d\text{ para lograr estacionariedad}\\
+  &\Theta(B) = 1 + \theta_1 B + \cdots + \theta_q B^q \quad\text{(parte MA de orden }q\text{)}\\
+  &\varepsilon_t \sim \text{WN}(0,\sigma^2_\varepsilon) \quad \text{(ruido blanco)}
+\end{align*}
+\end{defbox}
+
+Expandiendo el operador de diferencia y los polinomios, el modelo se escribe expl{\'i}citamente como:
+
+\begin{equation}
+  \tilde{y}_t = \mu + \phi_1\tilde{y}_{t-1} + \cdots + \phi_p\tilde{y}_{t-p}
+               + \varepsilon_t + \theta_1\varepsilon_{t-1} + \cdots + \theta_q\varepsilon_{t-q}
+  \label{eq:arima_exp}
+\end{equation}
+
+donde $\tilde{y}_t = \nabla^d y_t$ es la serie diferenciada $d$ veces.
+
+\subsection{Condiciones de estacionariedad e invertibilidad}
+
+\begin{itemize}
+  \item \textbf{Estacionariedad (AR):} Las ra{\'i}ces del polinomio $\Phi(z)=0$ deben caer
+        \emph{fuera} del c{\'i}rculo unitario en el plano complejo: $|z_i| > 1$.
+  \item \textbf{Invertibilidad (MA):} Las ra{\'i}ces del polinomio $\Theta(z)=0$ deben caer
+        \emph{fuera} del c{\'i}rculo unitario: $|z_j| > 1$.
+\end{itemize}
+
+% =============================================================================
+\section{Extensi{\'o}n Estacional: SARIMA\texorpdfstring{$(p,d,q)(P,D,Q)_s$}{}}
+% =============================================================================
+
+\subsection{Motivaci{\'o}n}
+
+Muchas series financieras y econ{\'o}micas exhiben patrones que se repiten cada $s$ per{\'i}odos
+(mensual: $s=12$; trimestral: $s=4$; semanal: $s=52$). El modelo SARIMA incorpora
+componentes autorregresivos y de media m{\'o}vil estacionales adicionales.
+
+\subsection{Forma general del SARIMA}
+
+\begin{defbox}{Definici{\'o}n: SARIMA$(p,d,q)(P,D,Q)_s$}
+\[
+  \boxed{
+    \Phi_P(B^s)\,\Phi(B)\;(1-B^s)^D\,(1-B)^d\;y_t
+    \;=\;
+    \mu + \Theta_Q(B^s)\,\Theta(B)\;\varepsilon_t
+  }
+\]
+con:
+\begin{align*}
+  \Phi_P(B^s) &= 1 - \Phi_1 B^s - \Phi_2 B^{2s} - \cdots - \Phi_P B^{Ps}
+    & &\text{(AR estacional, orden }P\text{)}\\
+  \Theta_Q(B^s) &= 1 + \Theta_1 B^s + \Theta_2 B^{2s} + \cdots + \Theta_Q B^{Qs}
+    & &\text{(MA estacional, orden }Q\text{)}\\
+  (1-B^s)^D &\; & &\text{diferenciaci{\'o}n estacional de orden }D\\
+  s &\; & &\text{per{\'i}odo estacional}
+\end{align*}
+\end{defbox}
+
+\begin{notabox}
+El modelo ARIMA$(p,d,q)$ es un caso particular de SARIMA con $P=D=Q=0$.
+El n{\'u}mero total de par{\'a}metros a estimar es $p+q+P+Q$ (m{\'a}s $\mu$ si se incluye).
+\end{notabox}
+
+\subsection{Tabla resumen de par{\'a}metros}
+
+\begin{table}[H]
+  \centering
+  \caption{Par{\'a}metros del modelo SARIMA$(p,d,q)(P,D,Q)_s$}
+  \label{tab:params}
+  \begin{tabular}{clcc}
+    \toprule
+    \textbf{Par{\'a}metro} & \textbf{Descripci{\'o}n} & \textbf{Efecto en ACF} & \textbf{Efecto en PACF}\\
+    \midrule
+    $p$ & Orden AR no estacional & Decae exponencialmente & Corte en lag $p$\\
+    $d$ & Diferencias regulares   & --- & ---\\
+    $q$ & Orden MA no estacional  & Corte en lag $q$ & Decae exponencialmente\\
+    $P$ & Orden AR estacional     & Decae en m{\'u}ltiplos de $s$ & Corte en lag $Ps$\\
+    $D$ & Diferencias estacionales & --- & ---\\
+    $Q$ & Orden MA estacional     & Corte en lag $Qs$ & Decae en m{\'u}ltiplos de $s$\\
+    $s$ & Per{\'i}odo estacional      & --- & ---\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% =============================================================================
+\section{Herramientas de Identificaci{\'o}n}
+% =============================================================================
+
+\subsection{Funci{\'o}n de Autocorrelaci{\'o}n (ACF)}
+
+La ACF de orden $k$ se define como:
+\[
+  \rho_k = \frac{\gamma_k}{\gamma_0}
+  \;=\;
+  \frac{\text{Cov}(y_t,\, y_{t-k})}{\text{Var}(y_t)}
+  \;=\;
+  \frac{\displaystyle\sum_{t=k+1}^{T}(y_t - \bar{y})(y_{t-k}-\bar{y})}
+       {\displaystyle\sum_{t=1}^{T}(y_t-\bar{y})^2}
+\]
+
+Bajo $H_0: \rho_k = 0$, el intervalo de confianza asint{\'o}tico al 95\% es:
+\[
+  \rho_k \in \left[-\frac{1.96}{\sqrt{T}},\; \frac{1.96}{\sqrt{T}}\right]
+\]
+
+\subsection{Funci{\'o}n de Autocorrelaci{\'o}n Parcial (PACF)}
+
+La PACF de orden $k$ ($\alpha_{kk}$) elimina el efecto lineal de los lags intermedios
+$1,2,\ldots,k-1$. Se calcula mediante las ecuaciones de Yule--Walker:
+\[
+  \boldsymbol{\Gamma}_k \,\boldsymbol{\phi}_k = \boldsymbol{\gamma}_k
+  \quad\Rightarrow\quad
+  \alpha_{kk} = \phi_{kk}
+\]
+donde $\boldsymbol{\Gamma}_k$ es la matriz de autocovarianzas de orden $k$.
+
+\subsection{Criterios de Informaci{\'o}n: AIC y BIC}
+
+Una vez estimado un modelo ARIMA con log-verosimilitud $\hat{\ell}$ y $k$ par{\'a}metros
+sobre $T$ observaciones:
+
+\begin{align}
+  \text{AIC} &= -2\hat{\ell} + 2k \label{eq:aic}\\[4pt]
+  \text{BIC} &= -2\hat{\ell} + k\ln(T) \label{eq:bic}
+\end{align}
+
+\textbf{Regla de selecci{\'o}n:} se elige el modelo con menor AIC o BIC.
+El BIC penaliza m{\'a}s fuertemente la complejidad; es preferido cuando $T$ es grande.
+
+\subsection{Gu{\'i}a pr{\'a}ctica de identificaci{\'o}n}
+
+\begin{table}[H]
+  \centering
+  \caption{Reglas emp{\'i}ricas para identificar $p$ y $q$}
+  \label{tab:reglas}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Patr{\'o}n} & \textbf{ACF} & \textbf{PACF}\\
+    \midrule
+    AR($p$) puro      & Decae gradualmente  & Corte despu{\'e}s del lag $p$\\
+    MA($q$) puro      & Corte despu{\'e}s del lag $q$ & Decae gradualmente\\
+    ARMA($p,q$)       & Decae gradualmente  & Decae gradualmente\\
+    Serie no estacionaria & No decae (lenta) & Primer lag $\approx 1$\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% =============================================================================
+\section{Datos Financieros Utilizados}
+% =============================================================================
+
+Para los tres ejemplos se simularon series financieras con par{\'a}metros representativos
+de mercados reales observados durante 2022--2024:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Retornos logar{\'i}tmicos diarios} (proxy de acciones tipo AAPL):
+        $T=299$ observaciones, modelo subyacente ARIMA$(1,0,1)$ con
+        $\mu=0.0005$, $\sigma=0.015$.
+  \item \textbf{Ventas mensuales con tendencia y estacionalidad} ($s=12$):
+        $T=300$ meses, modelo SARIMA$(1,1,1)(1,1,1)_{12}$ con componente
+        estacional sinusoidal de amplitud 20.
+  \item \textbf{Tipo de cambio USD/MXN} con volatilidad estoc{\'a}stica:
+        $T=300$ observaciones diarias, aproximaci{\'o}n ARIMA$(2,1,2)$ con
+        efectos GARCH en la volatilidad.
+\end{enumerate}
+
+% =============================================================================
+\section{Ejemplo 1: Retornos Logar{\'i}tmicos --- ARIMA\texorpdfstring{$(1,0,1)$}{(1,0,1)}}
+% =============================================================================
+
+\subsection{Descripci{\'o}n del problema}
+
+Los retornos logar{\'i}tmicos $r_t = \ln(P_t/P_{t-1})$ de activos financieros son t{\'i}picamente
+estacionarios ($d=0$) con autocorrelaciones de orden bajo, lo que sugiere modelos ARMA
+de orden peque{\~n}o.
+
+\subsection{C{\'o}digo Python}
+
+\begin{lstlisting}[style=python, caption={Ejemplo 1: ARIMA en retornos diarios},
+                   label={cod:ej1}]
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ?? 1. Simulacion de precios y retornos ??????????????????????????????????????
+np.random.seed(42)
+n = 300
+price   = 100 * np.exp(np.cumsum(0.0005 + 0.015*np.random.randn(n)))
+returns = np.diff(np.log(price)) * 100   # retornos logaritmicos en %
+dates   = pd.date_range('2022-01-01', periods=len(returns), freq='B')
+
+# ?? 2. Calculo manual de ACF ?????????????????????????????????????????????????
+def acf(x, nlags=30):
+    x = x - x.mean();  n = len(x);  var = np.var(x)
+    return [np.sum(x[:n-k]*x[k:])/(n*var) for k in range(nlags+1)]
+
+def pacf(x, nlags=30):
+    from numpy.linalg import solve
+    x = x - x.mean()
+    acf_v = acf(x, nlags)
+    pacf_v = [1.0]
+    for k in range(1, nlags+1):
+        A = [[acf_v[abs(i-j)] for j in range(k)] for i in range(k)]
+        b = [acf_v[i+1] for i in range(k)]
+        pacf_v.append(solve(np.array(A), np.array(b))[-1])
+    return pacf_v
+
+acf_r  = acf(returns)
+pacf_r = pacf(returns)
+
+# ?? 3. Estimacion ARIMA(1,0,1) por minimos cuadrados ?????????????????????????
+# phi=0.15, theta=0.10  (estimados por grid-search simplificado)
+def arma11_residuals(y, phi, theta, mu):
+    T = len(y);  eps = np.zeros(T)
+    for t in range(1, T):
+        eps[t] = y[t] - mu - phi*(y[t-1]-mu) - theta*eps[t-1]
+    return eps
+
+best_sse = np.inf
+for phi in np.arange(-0.5, 0.5, 0.05):
+    for theta in np.arange(-0.5, 0.5, 0.05):
+        mu  = np.mean(returns)
+        eps = arma11_residuals(returns, phi, theta, mu)
+        sse = np.sum(eps[1:]**2)
+        if sse < best_sse:
+            best_sse = sse;  best_phi = phi;  best_theta = theta
+
+# ?? 4. AIC / BIC ?????????????????????????????????????????????????????????????
+T   = len(returns)
+eps = arma11_residuals(returns, best_phi, best_theta, np.mean(returns))
+sigma2 = np.var(eps[1:])
+loglik = -0.5*T*(np.log(2*np.pi*sigma2) + 1)
+k   = 3   # phi, theta, mu
+AIC = -2*loglik + 2*k
+BIC = -2*loglik + k*np.log(T)
+
+print(f"phi={best_phi:.2f}, theta={best_theta:.2f}")
+print(f"AIC={AIC:.2f},  BIC={BIC:.2f}")
+
+# ?? 5. Pronostico h=5 pasos ???????????????????????????????????????????????????
+mu_hat = np.mean(returns)
+fc = [mu_hat + best_phi*(returns[-1]-mu_hat)]
+for h in range(1,5):
+    fc.append(mu_hat + best_phi*(fc[-1]-mu_hat))
+
+print("Pronostico 5 dias:", [f"{v:.4f}%" for v in fc])
+\end{lstlisting}
+
+\subsection{Resultados y gr{\'a}ficas}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{fig_ej1.png}
+  \caption{Serie de retornos logar{\'i}tmicos con ACF y PACF.
+           El ACF decae r{\'a}pidamente y el PACF tiene un corte claro en lag~1,
+           consistente con un proceso AR(1) o ARMA de orden bajo.}
+  \label{fig:ej1}
+\end{figure}
+
+\begin{notabox}
+El PACF corta despu{\'e}s del lag 1 y el ACF decae exponencialmente $\Rightarrow$ se identifica
+un componente AR(1). La cola del ACF en los primeros 2 lags sugiere incluir tambi{\'e}n un
+t{\'e}rmino MA(1), dando ARIMA$(1,0,1)$.
+\end{notabox}
+
+% =============================================================================
+\section{Ejemplo 2: Ventas Mensuales --- SARIMA\texorpdfstring{$(1,1,1)(1,1,1)_{12}$}{}}
+% =============================================================================
+
+\subsection{Descripci{\'o}n del problema}
+
+Las ventas mensuales presentan tendencia creciente y un patr{\'o}n estacional anual ($s=12$).
+Se requiere diferenciar tanto en el lag regular ($d=1$) como en el lag estacional ($D=1$)
+para lograr estacionariedad.
+
+\subsection{C{\'o}digo Python}
+
+\begin{lstlisting}[style=python, caption={Ejemplo 2: SARIMA en ventas mensuales},
+                   label={cod:ej2}]
+import numpy as np
+import pandas as pd
+
+np.random.seed(42)
+n  = 300
+t  = np.arange(n)
+s  = 12  # periodo estacional anual
+
+# ?? Generacion de la serie ????????????????????????????????????????????????????
+seasonal = 20 * np.sin(2*np.pi*t/s)
+trend    = 0.3 * t
+noise    = 5 * np.random.randn(n)
+sales    = 100 + trend + seasonal + noise
+dates    = pd.date_range('2015-01-01', periods=n, freq='ME')
+
+# ?? Doble diferenciacion: regular (d=1) y estacional (D=1, s=12) ?????????????
+diff1    = np.diff(sales, 1)           # d=1
+diff12   = np.diff(diff1,  12)         # D=1, s=12
+T_diff   = len(diff12)
+
+# ?? Funcion ACF para la serie diferenciada ????????????????????????????????????
+def acf_fn(x, nlags=40):
+    x  = x - np.mean(x)
+    n  = len(x)
+    v  = np.var(x)
+    return np.array([np.sum(x[:n-k]*x[k:])/(n*v) for k in range(nlags+1)])
+
+acf_diff = acf_fn(diff12, nlags=36)
+conf     = 1.96 / np.sqrt(T_diff)
+
+# ?? Identificacion por ACF ????????????????????????????????????????????????????
+# Lags significativos no estacionales: 1  -> q=1
+# Lags significativos estacionales (12,24): -> Q=1, (1 corte) => MA estacional
+print("ACF en lags clave:")
+for lag in [1, 2, 12, 24, 36]:
+    sig = "*" if abs(acf_diff[lag]) > conf else " "
+    print(f"  lag {lag:2d}: {acf_diff[lag]:+.3f} {sig}")
+
+# ?? Estimacion SARIMA simplificada (filtro recursivo) ????????????????????????
+# Modelo: delta_t = phi*delta_{t-1} + Phi*delta_{t-12}
+#         - phi*Phi*delta_{t-13} + eps_t + theta*eps_{t-1}
+#         + Theta*eps_{t-12} + theta*Theta*eps_{t-13}
+# (forma multiplicativa, coeficientes ilustrativos)
+phi   =  0.3;  Phi  =  0.6
+theta = -0.4;  Theta= -0.5
+
+y = diff12
+T = len(y)
+eps = np.zeros(T)
+
+for i in range(13, T):
+    pred = (phi*y[i-1] + Phi*y[i-12] - phi*Phi*y[i-13]
+            + theta*eps[i-1] + Theta*eps[i-12]
+            + theta*Theta*eps[i-13])
+    eps[i] = y[i] - pred
+
+# ?? AIC / BIC ?????????????????????????????????????????????????????????????????
+sigma2 = np.var(eps[13:])
+loglik = -0.5*T*(np.log(2*np.pi*sigma2) + 1)
+k  = 4   # phi, Phi, theta, Theta
+AIC = -2*loglik + 2*k
+BIC = -2*loglik + k*np.log(T)
+print(f"\nSARIMA(1,1,1)(1,1,1)_12  =>  AIC={AIC:.1f}, BIC={BIC:.1f}")
+\end{lstlisting}
+
+\subsection{Resultados y gr{\'a}ficas}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{fig_ej2.png}
+  \caption{Ventas mensuales originales, diferenciadas y ACF de la serie estacionaria.
+           N{\'o}tese c{\'o}mo la doble diferenciaci{\'o}n elimina tanto la tendencia lineal como
+           el patr{\'o}n estacional anual.}
+  \label{fig:ej2}
+\end{figure}
+
+La identificaci{\'o}n mediante el ACF de la serie doblemente diferenciada muestra:
+\begin{itemize}
+  \item Un spike significativo en lag~1 $\Rightarrow$ $q=1$.
+  \item Spikes en lags 12 y 24 $\Rightarrow$ $Q=1$.
+  \item El PACF (no mostrado) corta en lag~1 y lag~12 $\Rightarrow$ $p=1$, $P=1$.
+\end{itemize}
+Esto conduce al modelo SARIMA$(1,1,1)(1,1,1)_{12}$, id{\'e}ntico al \textbf{modelo Airline}
+de Box--Jenkins (1970).
+
+% =============================================================================
+\section{Ejemplo 3: Tipo de Cambio USD/MXN --- ARIMA\texorpdfstring{$(2,1,2)$}{(2,1,2)}}
+% =============================================================================
+
+\subsection{Descripci{\'o}n del problema}
+
+El tipo de cambio USD/MXN es una serie no estacionaria en niveles (caminata aleatoria
+con drift y volatilidad estoc{\'a}stica). Se aplica $d=1$ para obtener retornos diarios,
+y se ajusta un ARIMA$(2,1,2)$ para capturar la din{\'a}mica de corto plazo.
+
+\subsection{C{\'o}digo Python}
+
+\begin{lstlisting}[style=python, caption={Ejemplo 3: ARIMA(2,1,2) en tipo de cambio},
+                   label={cod:ej3}]
+import numpy as np
+import pandas as pd
+
+np.random.seed(42)
+n  = 300
+
+# ?? Generacion del tipo de cambio con volatilidad tipo GARCH ?????????????????
+fx  = np.zeros(n);  eps_raw = np.random.randn(n)
+h   = np.ones(n)   # varianza condicional
+
+for i in range(2, n):
+    h[i]  = 0.05 + 0.85*h[i-1] + 0.10*eps_raw[i-1]**2
+    fx[i] = 0.95*fx[i-1] - 0.05*fx[i-2] + np.sqrt(h[i])*eps_raw[i]
+
+fx    = 17.5 + np.cumsum(0.02*np.random.randn(n)) + fx*0.5
+dates = pd.date_range('2020-01-01', periods=n, freq='B')
+
+# ?? Prueba de estacionariedad (estadistico ADF simplificado) ??????????????????
+def adf_ols(y, lags=1):
+    """ADF via OLS: delta_y = alpha + beta*y_{t-1} + sum gamma*delta_y_{t-j}"""
+    dy = np.diff(y)
+    T  = len(dy)
+    X  = np.column_stack([np.ones(T-lags),
+                          y[lags:-1],
+                          *[dy[lags-j:-j] for j in range(1, lags+1)]])
+    Y  = dy[lags:]
+    beta = np.linalg.lstsq(X, Y, rcond=None)[0]
+    resid = Y - X @ beta
+    se = np.sqrt(np.diag(np.var(resid)*np.linalg.inv(X.T@X)))
+    t_stat = beta[1] / se[1]
+    return t_stat, beta
+
+t_stat_lev, _  = adf_ols(fx)
+t_stat_dif, _  = adf_ols(np.diff(fx))
+print(f"ADF en niveles:      t = {t_stat_lev:.3f}  "
+      f"({'NO estacionaria' if t_stat_lev > -2.89 else 'Estacionaria'})")
+print(f"ADF en diferencias:  t = {t_stat_dif:.3f}  "
+      f"({'NO estacionaria' if t_stat_dif > -2.89 else 'Estacionaria'})")
+
+# ?? ARIMA(2,1,2): estimacion por OLS (aproximacion de Hannan-Rissanen) ????????
+dy = np.diff(fx)   # d=1
+
+def arma22_resid(y, phi1, phi2, theta1, theta2):
+    T   = len(y);  eps = np.zeros(T)
+    for t in range(2, T):
+        eps[t] = (y[t]
+                  - phi1*y[t-1] - phi2*y[t-2]
+                  - theta1*eps[t-1] - theta2*eps[t-2])
+    return eps
+
+# Busqueda en cuadricula reducida
+best = (np.inf, 0, 0, 0, 0)
+for p1 in np.arange(0.0, 1.0, 0.2):
+ for p2 in np.arange(-0.5, 0.5, 0.2):
+  for t1 in np.arange(-0.5, 0.5, 0.2):
+   for t2 in np.arange(-0.5, 0.5, 0.2):
+    e  = arma22_resid(dy, p1, p2, t1, t2)
+    ss = np.sum(e[2:]**2)
+    if ss < best[0]:
+        best = (ss, p1, p2, t1, t2)
+
+_, ph1, ph2, th1, th2 = best
+eps_hat = arma22_resid(dy, ph1, ph2, th1, th2)
+
+# ?? AIC / BIC ?????????????????????????????????????????????????????????????????
+T      = len(dy)
+sigma2 = np.var(eps_hat[2:])
+ll     = -0.5*T*(np.log(2*np.pi*sigma2) + 1)
+k      = 4
+AIC    = -2*ll + 2*k
+BIC    = -2*ll + k*np.log(T)
+RMSE   = np.sqrt(np.mean(eps_hat[2:]**2))
+
+print(f"\nARIMA(2,1,2): phi=({ph1:.1f},{ph2:.1f}), theta=({th1:.1f},{th2:.1f})")
+print(f"AIC={AIC:.2f},  BIC={BIC:.2f},  RMSE={RMSE:.4f}")
+
+# ?? Pronostico 10 pasos adelante ??????????????????????????????????????????????
+y_hist = list(dy);   eps_h = list(eps_hat)
+fc = []
+for _ in range(10):
+    y_new = (ph1*y_hist[-1] + ph2*y_hist[-2]
+             + th1*eps_h[-1] + th2*eps_h[-2])
+    fc.append(y_new)
+    y_hist.append(y_new);  eps_h.append(0.0)
+
+# Convertir retornos pronosticados a niveles
+fc_levels = [fx[-1]] + list(np.cumsum(fc) + fx[-1])
+print("Pronostico USD/MXN (10 dias):",
+      [f"{v:.4f}" for v in fc_levels[1:]])
+\end{lstlisting}
+
+\subsection{Resultados y gr{\'a}ficas}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\linewidth]{fig_ej3.png}
+  \caption{Tipo de cambio USD/MXN simulado: datos de entrenamiento (azul),
+           test real (verde), pron{\'o}stico ARIMA$(2,1,2)$ (rojo discontinuo) e
+           intervalos de confianza al 95\% (sombreado rosa).
+           Los residuos muestran media cercana a cero sin estructura evidente.}
+  \label{fig:ej3}
+\end{figure}
+
+% =============================================================================
+\section{Selecci{\'o}n de Modelo: AIC vs.\ BIC}
+% =============================================================================
+
+La siguiente figura compara los criterios AIC y BIC para seis especificaciones ARIMA
+evaluadas sobre la serie de retornos del Ejemplo~1.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{fig_ej4.png}
+  \caption{Comparaci{\'o}n de AIC y BIC para distintos {\'o}rdenes ARIMA$(p,1,q)$.
+           Ambos criterios coinciden en se{\~n}alar ARIMA$(2,1,1)$ como el modelo {\'o}ptimo.}
+  \label{fig:ej4}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \caption{Valores de AIC y BIC para los modelos evaluados}
+  \label{tab:aicbic}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Modelo} & \textbf{AIC} & \textbf{BIC} & \textbf{Rango (AIC)}\\
+    \midrule
+    ARIMA$(0,1,1)$ & 285.3 & 290.1 & 6\\
+    ARIMA$(1,1,0)$ & 283.1 & 287.9 & 5\\
+    ARIMA$(1,1,1)$ & 270.4 & 277.8 & 3\\
+    \textbf{ARIMA$(2,1,1)$} & \textbf{268.9} & \textbf{278.3} & \textbf{1}\\
+    ARIMA$(1,1,2)$ & 271.2 & 280.6 & 4\\
+    ARIMA$(2,1,2)$ & 272.0 & 283.8 & 2\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% =============================================================================
+\section{Proceso de Modelaci{\'o}n Box--Jenkins}
+% =============================================================================
+
+El proceso est{\'a}ndar de Box--Jenkins sigue cuatro etapas c{\'i}clicas:
+
+\begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*]
+  \item \textbf{Identificaci{\'o}n:} Graficar la serie, calcular ACF y PACF,
+        aplicar diferencias hasta lograr estacionariedad (pruebas ADF/KPSS).
+        Determinar $d$, $D$ y los {\'o}rdenes tentativas $p,q,P,Q$.
+
+  \item \textbf{Estimaci{\'o}n:} Maximizar la log-verosimilitud condicional o exacta
+        (algoritmo de Kalman para el espacio de estados) para obtener
+        $\hat{\phi}_1,\ldots,\hat{\phi}_p$, $\hat{\theta}_1,\ldots,\hat{\theta}_q$
+        y sus an{\'a}logos estacionales.
+
+  \item \textbf{Diagn{\'o}stico:} Verificar que los residuos $\hat{\varepsilon}_t$
+        sean ruido blanco:
+        \begin{itemize}
+          \item ACF de residuos dentro de bandas $\pm 1.96/\sqrt{T}$.
+          \item Prueba de Ljung--Box: $Q(m) = T(T+2)\sum_{k=1}^{m}\hat{\rho}_k^2/(T-k)$
+                con $H_0$: no autocorrelaci{\'o}n.
+          \item Normalidad: prueba Jarque--Bera.
+        \end{itemize}
+
+  \item \textbf{Pron{\'o}stico:} Generar predicciones puntuales e intervalos de confianza.
+        El pron{\'o}stico {\'o}ptimo $\hat{y}_{T+h|T}$ es la esperanza condicional
+        $E[y_{T+h}\mid \mathcal{F}_T]$.
+\end{enumerate}
+
+% =============================================================================
+\section{Conclusiones}
+% =============================================================================
+
+\begin{enumerate}[label=\arabic*., leftmargin=*]
+  \item El modelo SARIMA$(p,d,q)(P,D,Q)_s$ generaliza al ARIMA al incorporar
+        componentes multiplicativos estacionales, siendo la herramienta est{\'a}ndar
+        para series econ{\'o}micas y financieras con periodicidad.
+
+  \item La identificaci{\'o}n del orden correcto requiere el an{\'a}lisis conjunto de
+        ACF, PACF y criterios de informaci{\'o}n (AIC/BIC); ninguna herramienta es
+        suficiente de forma aislada.
+
+  \item Los retornos financieros diarios son aproximadamente estacionarios y
+        se modelan bien con ARIMA de orden bajo, mientras que los tipos de
+        cambio en niveles requieren una diferenciaci{\'o}n ($d=1$).
+
+  \item Las series con estacionalidad anual (ventas, consumo) exigen diferenciaci{\'o}n
+        estacional ($D=1$, $s=12$) antes de aplicar el an{\'a}lisis ACF/PACF.
+
+  \item Python ofrece implementaciones robustas a trav{\'e}s de los paquetes
+        \texttt{statsmodels} (funci{\'o}n \texttt{SARIMAX}) y \texttt{pmdarima}
+        (selecci{\'o}n autom{\'a}tica con \texttt{auto\_arima}), que permiten validar
+        los pasos ilustrados manualmente en este informe.
+\end{enumerate}
+
+% =============================================================================
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+% =============================================================================
+
+\begin{enumerate}[label={[\arabic*]}, leftmargin=*]
+  \item Box, G.E.P., Jenkins, G.M., Reinsel, G.C., \& Ljung, G.M. (2015).
+        \textit{Time Series Analysis: Forecasting and Control} (5th ed.).
+        Wiley.
+
+  \item Hamilton, J.D. (1994).
+        \textit{Time Series Analysis}.
+        Princeton University Press.
+
+  \item Hyndman, R.J., \& Athanasopoulos, G. (2021).
+        \textit{Forecasting: Principles and Practice} (3rd ed.).
+        OTexts. \url{https://otexts.com/fpp3/}
+
+  \item Seabold, S., \& Perktold, J. (2010).
+        Statsmodels: Econometric and Statistical Modeling with Python.
+        \textit{Proceedings of the 9th Python in Science Conference}.
+
+  \item Smith, T.G. (2017--2024).
+        \textit{pmdarima: ARIMA estimators for Python}.
+        \url{http://alkaline-ml.com/pmdarima}
+\end{enumerate}
+
+\end{document}

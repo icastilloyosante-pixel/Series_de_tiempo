@@ -1,0 +1,812 @@
+% ============================================================
+%   Series de Tiempo — Documentación de Notebooks
+%   Autor: Iñaki Castillo
+%   Fecha: Junio 2026
+% ============================================================
+
+\documentclass[12pt, a4paper]{article}
+
+% ── Codificación y fuentes ────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{lmodern}
+
+% ── Geometría y diseño ───────────────────────────────────
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=3cm]{geometry}
+\usepackage{setspace}
+\setstretch{1.15}
+
+% ── Matemáticas ──────────────────────────────────────────
+\usepackage{amsmath, amssymb, amsthm}
+
+% ── Código fuente ─────────────────────────────────────────
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codebg}{HTML}{F7F7F7}
+\definecolor{keywordcolor}{HTML}{0000CC}
+\definecolor{commentcolor}{HTML}{008000}
+\definecolor{stringcolor}{HTML}{BA2121}
+\definecolor{rulecolor}{HTML}{CCCCCC}
+\definecolor{headerbg}{HTML}{2C3E50}
+
+\lstdefinestyle{python}{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{keywordcolor}\bfseries,
+  commentstyle=\color{commentcolor}\itshape,
+  stringstyle=\color{stringcolor},
+  breaklines=true,
+  breakatwhitespace=true,
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{rulecolor},
+  xleftmargin=1em,
+  xrightmargin=1em,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  numbersep=6pt,
+  tabsize=4,
+  captionpos=b
+}
+\lstset{style=python}
+
+% ── Gráficos y colores ───────────────────────────────────
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins, breakable}
+
+% Caja de definición
+\newtcolorbox{definicion}[1][]{
+  enhanced, breakable,
+  colback=blue!5!white,
+  colframe=blue!50!black,
+  fonttitle=\bfseries,
+  title=Definición,
+  #1
+}
+
+% Caja de nota/observación
+\newtcolorbox{nota}[1][]{
+  enhanced, breakable,
+  colback=orange!8!white,
+  colframe=orange!70!black,
+  fonttitle=\bfseries,
+  title=Nota,
+  #1
+}
+
+% Caja de resultado
+\newtcolorbox{resultado}[1][]{
+  enhanced, breakable,
+  colback=green!5!white,
+  colframe=green!50!black,
+  fonttitle=\bfseries,
+  title=Resultado clave,
+  #1
+}
+
+% ── Hipervínculos ─────────────────────────────────────────
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!70!black,
+  citecolor=red!60!black,
+  pdftitle={Series de Tiempo — Iñaki Castillo},
+  pdfauthor={Iñaki Castillo}
+}
+
+% ── Encabezados y pies ───────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Series de Tiempo}
+\fancyhead[R]{\small Iñaki Castillo}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Tablas y figuras ─────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+
+% ── Utilidades ───────────────────────────────────────────
+\usepackage{enumitem}
+\usepackage{parskip}
+
+% ─────────────────────────────────────────────────────────
+\begin{document}
+
+% ── Portada ───────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\Huge\bfseries Series de Tiempo:\\[0.3em]
+   \Large Modelado, Análisis y Pronóstico\par}
+  \vspace{1.5cm}
+  {\large Documentación de Notebooks de Python\par}
+  \vspace{2cm}
+  \begin{tikzpicture}
+    \draw[blue!40!black, thick] (0,0) -- (12,0);
+    \draw[blue!40!black, very thick] (0,0.05) -- (12,0.05);
+  \end{tikzpicture}
+  \vspace{2cm}
+
+  {\Large\bfseries Iñaki Castillo\par}
+  \vspace{0.5cm}
+  {\large Junio de 2026\par}
+  \vfill
+  \begin{tikzpicture}
+    \draw[blue!40!black, thick] (0,0) -- (12,0);
+    \draw[blue!40!black, very thick] (0,-0.05) -- (12,-0.05);
+  \end{tikzpicture}
+\end{titlepage}
+
+% ── Índice ────────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   INTRODUCCIÓN GENERAL
+% ─────────────────────────────────────────────────────────
+\section{Introducción}
+
+Este documento recopila y documenta cuatro notebooks de Python orientados al
+análisis de series de tiempo. Los temas cubiertos van desde los fundamentos
+teóricos —como el proceso de caminata aleatoria— hasta técnicas de modelado
+más avanzadas como SARIMA, SARIMAX y Prophet, pasando por el análisis de
+series financieras reales obtenidas con \texttt{yfinance}.
+
+La notación general que se utiliza a lo largo del documento es la siguiente:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{cl}
+  \toprule
+  \textbf{Símbolo} & \textbf{Significado} \\
+  \midrule
+  $\{X_t\}$ & Proceso estocástico (serie de tiempo) \\
+  $Z_t$     & Ruido blanco gaussiano: $Z_t \sim \mathcal{N}(0,\sigma^2)$ \\
+  $\Delta$  & Operador de diferencia: $\Delta X_t = X_t - X_{t-1}$ \\
+  $B$       & Operador de retroceso (\textit{backshift}): $B X_t = X_{t-1}$ \\
+  $p, d, q$ & Órdenes AR, integración y MA (no estacional) \\
+  $P, D, Q$ & Órdenes AR, integración y MA estacional \\
+  $m$       & Periodo estacional \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   NOTEBOOK 1: CAMINATA ALEATORIA
+% ─────────────────────────────────────────────────────────
+\section{Caminata Aleatoria (\textit{Random Walk})}
+
+\subsection{Descripción del Notebook}
+
+El notebook \texttt{caminata\_aleat.ipynb} introduce el concepto de
+\textbf{caminata aleatoria}, uno de los procesos estocásticos más importantes
+en el análisis de series de tiempo y en finanzas. Se simula el proceso, se
+diferencia para obtener una serie estacionaria y se aplica el test de
+Dickey-Fuller Aumentado (ADF) para confirmar la estacionariedad.
+
+\subsection{Fundamentos Teóricos}
+
+\begin{definicion}
+  Una \textbf{caminata aleatoria} es un proceso estocástico $\{X_t\}$ definido
+  por la recurrencia:
+  \[
+    X_t = X_{t-1} + Z_t, \qquad t = 1, 2, \ldots, T
+  \]
+  donde $Z_t \overset{iid}{\sim} \mathcal{N}(0,1)$ es ruido blanco gaussiano
+  y $X_0$ es un valor inicial fijo (generalmente $X_0 = 0$).
+\end{definicion}
+
+La solución explícita del proceso es:
+\[
+  X_t = X_0 + \sum_{k=1}^{t} Z_k
+\]
+
+Sus propiedades estadísticas son:
+\begin{align*}
+  \mathbb{E}[X_t] &= X_0 = 0 \\
+  \mathrm{Var}[X_t] &= t\,\sigma^2
+\end{align*}
+
+Como la varianza crece linealmente con el tiempo, la caminata aleatoria
+\textbf{no es estacionaria en covarianza}. Esto tiene implicaciones directas
+para el modelado: aplicar modelos ARMA directamente a este proceso sería
+incorrecto.
+
+\subsubsection{Diferenciación}
+
+Para convertir el proceso en estacionario se aplica el \textbf{operador de
+diferencia}:
+\[
+  \Delta X_t = X_t - X_{t-1} = Z_t
+\]
+
+La serie diferenciada $\{\Delta X_t\}$ es ruido blanco con media cero y
+varianza constante $\sigma^2$, es decir, \textit{sí} es estacionaria.
+
+\subsubsection{Test de Dickey-Fuller Aumentado (ADF)}
+
+El ADF contrasta las hipótesis:
+\[
+  H_0: \text{la serie tiene raíz unitaria (no es estacionaria)} \quad
+  H_1: \text{la serie es estacionaria}
+\]
+
+Se rechaza $H_0$ cuando el estadístico ADF es \textbf{más negativo} que el
+valor crítico, o equivalentemente cuando el \textit{p-valor} $< 0.05$.
+
+\subsection{Código: Simulación}
+
+\begin{lstlisting}[caption={Simulación de la caminata aleatoria}]
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Parámetros
+np.random.seed(42)   # Reproducibilidad
+T  = 200             # Número de periodos
+X0 = 0               # Valor inicial
+
+# Generar ruido blanco Z_t ~ N(0,1)
+Z = np.random.normal(0, 1, T)
+
+# Generar proceso X_t = X_{t-1} + Z_t
+X = np.zeros(T)
+X[0] = X0
+
+for t in range(1, T):
+    X[t] = X[t-1] + Z[t]
+
+# Gráfica
+plt.figure(figsize=(12, 6), dpi=120)
+plt.plot(X, linewidth=2.5)
+plt.scatter(range(T), X, s=15)
+plt.title("Simulación de Random Walk\n$X_t = X_{t-1} + Z_t$", fontsize=16)
+plt.xlabel("Tiempo (t)", fontsize=12)
+plt.ylabel("Valor de $X_t$", fontsize=12)
+plt.grid(alpha=0.3)
+plt.axhline(0, linestyle='--')
+plt.tight_layout()
+plt.show()
+\end{lstlisting}
+
+\subsection{Código: Diferenciación y Test ADF}
+
+\begin{lstlisting}[caption={Diferenciación y Test ADF sobre la caminata aleatoria}]
+from statsmodels.tsa.stattools import adfuller
+
+# Diferenciación: Delta X_t = X_t - X_{t-1}
+X_diff = np.diff(X)
+
+# Gráfica de la serie diferenciada
+plt.figure(figsize=(12, 6), dpi=120)
+plt.plot(X_diff, linewidth=2.5)
+plt.scatter(range(len(X_diff)), X_diff, s=15)
+plt.title("Serie Diferenciada\n$\\Delta X_t = X_t - X_{t-1}$", fontsize=16)
+plt.xlabel("Tiempo (t)", fontsize=12)
+plt.ylabel("Valor Diferenciado", fontsize=12)
+plt.grid(alpha=0.3)
+plt.axhline(0, linestyle='--')
+plt.tight_layout()
+plt.show()
+
+# Test ADF
+adf_result = adfuller(X_diff)
+
+print(f"Estadístico ADF : {adf_result[0]:.4f}")
+print(f"p-valor         : {adf_result[1]:.4f}")
+print("Valores críticos:")
+for key, value in adf_result[4].items():
+    print(f"   {key}: {value:.4f}")
+
+if adf_result[1] < 0.05:
+    print("\nConclusión: La serie diferenciada ES estacionaria (rechazamos H0).")
+else:
+    print("\nConclusión: La serie diferenciada NO es estacionaria.")
+\end{lstlisting}
+
+\begin{resultado}
+  La serie $\Delta X_t = Z_t$ es ruido blanco, por lo que el test ADF rechaza
+  la hipótesis nula de raíz unitaria. Se espera un estadístico muy negativo y
+  un $p$-valor $\ll 0.05$, confirmando que diferenciar \textbf{una sola vez}
+  es suficiente para hacer estacionaria a la caminata aleatoria.
+\end{resultado}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   NOTEBOOK 2: SERIES FINANCIERAS
+% ─────────────────────────────────────────────────────────
+\section{Series Financieras — Amazon (AMZN)}
+
+\subsection{Descripción del Notebook}
+
+El notebook \texttt{Series\_Financieras.ipynb} descarga precios históricos de
+la acción de Amazon (ticker: \texttt{AMZN}) mediante la librería
+\texttt{yfinance}, visualiza la serie de precios de cierre con \texttt{Altair}
+y calcula los \textbf{log-retornos} como transformación estándar en finanzas
+cuantitativas.
+
+\subsection{Fundamentos Teóricos}
+
+\subsubsection{Precios de cierre ajustados}
+
+En finanzas cuantitativas se trabaja habitualmente con el precio de cierre
+ajustado $P_t$ que incorpora dividendos y \textit{splits}. El precio crudo es
+no estacionario (generalmente con tendencia estocástica), por lo que no puede
+emplearse directamente en modelos ARMA sin transformación.
+
+\subsubsection{Log-retornos}
+
+Sea $P_t$ el precio de cierre en el periodo $t$. El \textbf{log-retorno
+continuo} se define como:
+\[
+  r_t = \ln\!\left(\frac{P_t}{P_{t-1}}\right) = \ln P_t - \ln P_{t-1}
+\]
+
+Propiedades importantes de los log-retornos:
+\begin{itemize}[noitemsep]
+  \item Son \textbf{aditivos en el tiempo}: el retorno acumulado en $[1,T]$ es
+        $\sum_{t=1}^{T} r_t$.
+  \item Para retornos pequeños, $r_t \approx (P_t - P_{t-1})/P_{t-1}$ (retorno
+        aritmético).
+  \item Empíricamente presentan \textit{colas pesadas} y
+        \textit{agrupamiento de volatilidad} (\textit{volatility clustering}).
+  \item Son aproximadamente estacionarios en media (aunque su varianza puede
+        variar, capturada por modelos ARCH/GARCH).
+\end{itemize}
+
+\subsection{Código}
+
+\begin{lstlisting}[caption={Descarga de datos y cálculo de log-retornos de AMZN}]
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import altair as alt
+
+# ── Descarga de datos ──────────────────────────────────
+amzn = yf.download("AMZN", start="2010-01-01")
+amzn_precios = amzn["Close"]
+
+# ── Visualización interactiva con Altair ───────────────
+df = amzn_precios.reset_index()
+df.columns = ["Date", "Close"]
+
+chart = (
+    alt.Chart(df)
+    .mark_line()
+    .encode(
+        x=alt.X("Date:T", title="Fecha"),
+        y=alt.Y("Close:Q", title="Precio de cierre (USD)"),
+        tooltip=["Date:T", "Close:Q"],
+    )
+    .properties(title="Serie de tiempo AMZN", width=900, height=400)
+    .interactive()
+)
+chart
+
+# ── Log-retornos ──────────────────────────────────────
+# r_t = ln(P_t) - ln(P_{t-1})
+amzn_log_returns = np.log(amzn_precios / amzn_precios.shift(1))
+amzn_log_returns = amzn_log_returns.dropna()   # Eliminar primer NaN
+
+display(amzn_log_returns.head())
+\end{lstlisting}
+
+\begin{nota}
+  El primer valor del vector de log-retornos resulta \texttt{NaN} porque no
+  existe $P_{t-1}$ para $t=0$. Se elimina con \texttt{.dropna()} antes de
+  cualquier análisis posterior. En la práctica, los log-retornos de AMZN desde
+  2010 presentan el comportamiento típico de renta variable: media cercana a
+  cero, exceso de curtosis (colas pesadas) y períodos de alta y baja
+  volatilidad.
+\end{nota}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   NOTEBOOK 3: ESTACIONALIDAD Y SARIMAX
+% ─────────────────────────────────────────────────────────
+\section{Estacionalidad y SARIMAX}
+
+\subsection{Descripción del Notebook}
+
+El notebook \texttt{Seasonality.ipynb} construye un dataset sintético con
+\textbf{tendencia}, \textbf{estacionalidad anual} y una \textbf{variable
+exógena} (efecto de promociones) para motivar el uso del modelo SARIMAX, que
+es la extensión de SARIMA con variables explicativas externas.
+
+\subsection{Fundamentos Teóricos}
+
+\subsubsection{Descomposición de una serie temporal}
+
+Una serie de tiempo $\{Y_t\}$ puede descomponerse como:
+\[
+  Y_t = T_t + S_t + \varepsilon_t
+\]
+donde $T_t$ es la \textbf{tendencia}, $S_t$ es el componente
+\textbf{estacional} y $\varepsilon_t$ es el término de \textbf{error}.
+
+\subsubsection{Modelo SARIMAX}
+
+El modelo SARIMAX$\,(p,d,q)(P,D,Q)_m$ extiende SARIMA incluyendo regresores
+exógenos $\mathbf{x}_t$:
+\[
+  \Phi_P(B^m)\,\phi_p(B)\,\Delta^d\Delta_m^D Y_t
+  = \Theta_Q(B^m)\,\theta_q(B)\,\varepsilon_t + \boldsymbol{\beta}^\top \mathbf{x}_t
+\]
+
+donde:
+\begin{align*}
+  \phi_p(B)    &= 1 - \phi_1 B - \cdots - \phi_p B^p & &\text{(polinomio AR no estacional)} \\
+  \theta_q(B)  &= 1 + \theta_1 B + \cdots + \theta_q B^q & &\text{(polinomio MA no estacional)} \\
+  \Phi_P(B^m)  &= 1 - \Phi_1 B^m - \cdots - \Phi_P B^{Pm} & &\text{(polinomio AR estacional)} \\
+  \Theta_Q(B^m)&= 1 + \Theta_1 B^m + \cdots + \Theta_Q B^{Qm} & &\text{(polinomio MA estacional)} \\
+  \Delta^d     &= (1-B)^d & &\text{(diferenciación no estacional)} \\
+  \Delta_m^D   &= (1-B^m)^D & &\text{(diferenciación estacional)}
+\end{align*}
+
+\subsection{Generación del Dataset Sintético}
+
+\begin{lstlisting}[caption={Construcción del dataset sintético con tendencia, estacionalidad y variables exógenas}]
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Rango de fechas: 5 años, datos mensuales
+dates = pd.date_range(start='2018-01-01', periods=5*12, freq='MS')
+np.random.seed(42)
+
+# Componentes de la serie
+trend        = np.linspace(0, 100, len(dates))                              # Tendencia lineal
+seasonality  = (15 * np.sin(np.linspace(0, 3*2*np.pi, len(dates)))          # Ciclo anual
+              + 10 * np.cos(np.linspace(0, 2*np.pi, len(dates))))
+noise        = np.random.normal(0, 5, len(dates))
+
+# Variable exógena: efecto de promociones
+promotion_effect = np.zeros(len(dates))
+promotion_months = [3, 8, 15, 20, 27, 32, 39, 44, 51, 56]
+
+for month_idx in promotion_months:
+    if month_idx < len(dates):
+        promotion_effect[month_idx] = 20 + np.random.normal(0, 3)
+
+# Serie final: combinación aditiva
+time_series = trend + seasonality + promotion_effect + noise
+
+# DataFrame
+df = pd.DataFrame(
+    {'value': time_series, 'promotion': promotion_effect > 0},
+    index=dates
+)
+display(df.head())
+
+# Visualización
+plt.figure(figsize=(15, 7))
+plt.plot(df.index, df['value'], label='Serie Temporal Sintética')
+plt.scatter(df.index[df['promotion']], df['value'][df['promotion']],
+            color='red', s=50, label='Mes con Promoción')
+plt.title('Serie Temporal Sintética con Tendencia, Estacionalidad y Promociones')
+plt.xlabel('Fecha')
+plt.ylabel('Valor')
+plt.legend()
+plt.grid(True)
+plt.show()
+\end{lstlisting}
+
+\begin{nota}
+  En escenarios reales, la columna \texttt{promotion} puede reemplazarse por
+  cualquier variable exógena relevante: días festivos, índices económicos,
+  temperatura, campañas de marketing, etc. SARIMAX aprovecha esta información
+  para mejorar la precisión del pronóstico en comparación con un SARIMA puro.
+\end{nota}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   NOTEBOOK 4: SARIMA Y PROPHET
+% ─────────────────────────────────────────────────────────
+\section{Modelo SARIMA y Prophet}
+
+\subsection{Descripción del Notebook}
+
+El notebook \texttt{Clase\_1.ipynb} implementa paso a paso:
+\begin{enumerate}[noitemsep]
+  \item Generación de una serie de tiempo sintética con tendencia y estacionalidad.
+  \item Ajuste de un modelo \textbf{SARIMA}$(0,1,1)(0,1,1)_{12}$ (Airline Model).
+  \item Pronóstico a 24 meses.
+  \item Análisis de residuos (ACF, PACF, Q-Q plot, tests estadísticos).
+  \item Pronóstico alternativo con el modelo \textbf{Prophet} de Meta.
+\end{enumerate}
+
+\subsection{Fundamentos Teóricos}
+
+\subsubsection{Modelo SARIMA$(0,1,1)(0,1,1)_{12}$}
+
+Conocido como el \textit{Airline Model} (Box \& Jenkins, 1976), es uno de los
+modelos de series de tiempo más utilizados en la práctica. Su ecuación es:
+
+\[
+  (1-B)(1-B^{12})\,Y_t
+  = (1 + \theta_1 B)(1 + \Theta_1 B^{12})\,\varepsilon_t
+\]
+
+Las componentes de este modelo específico son:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{cll}
+  \toprule
+  \textbf{Parámetro} & \textbf{Valor} & \textbf{Interpretación} \\
+  \midrule
+  $p$ & 0 & Sin AR no estacional \\
+  $d$ & 1 & Una diferenciación no estacional \\
+  $q$ & 1 & MA de orden 1 no estacional \\
+  $P$ & 0 & Sin AR estacional \\
+  $D$ & 1 & Una diferenciación estacional \\
+  $Q$ & 1 & MA de orden 1 estacional \\
+  $m$ & 12 & Periodo anual (datos mensuales) \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+El doble operador de diferencia $\Delta\Delta_{12}$ elimina simultáneamente
+la \textbf{tendencia} y la \textbf{estacionalidad} de la serie.
+
+\subsubsection{Diagnóstico de Residuos}
+
+Para validar el ajuste del modelo los residuos $\hat{\varepsilon}_t$ deben
+comportarse como \textbf{ruido blanco}:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Ljung-Box}: contrasta $H_0$: no hay autocorrelación en los
+        residuos. $p > 0.05$ es deseable.
+  \item \textbf{Jarque-Bera}: contrasta $H_0$: los residuos son normales.
+        $p > 0.05$ es deseable.
+  \item \textbf{Heteroscedasticidad}: contrasta $H_0$: varianza constante.
+        $p > 0.05$ es deseable.
+\end{itemize}
+
+\subsubsection{Modelo Prophet}
+
+Prophet es un modelo de pronóstico aditivo desarrollado por Meta (2017):
+\[
+  Y(t) = g(t) + s(t) + h(t) + \varepsilon_t
+\]
+
+donde $g(t)$ es la tendencia, $s(t)$ los componentes estacionales (Fourier),
+$h(t)$ el efecto de días festivos y $\varepsilon_t$ el error. Es especialmente
+robusto ante datos faltantes y cambios de tendencia.
+
+\subsection{Código: Generación de Datos y Ajuste SARIMA}
+
+\begin{lstlisting}[caption={Generación de la serie sintética}]
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+np.random.seed(42)
+n_points = 120   # 10 años de datos mensuales
+index = pd.date_range(start='2010-01-01', periods=n_points, freq='MS')
+
+# Componentes
+trend      = np.linspace(0, 20, n_points)
+seasonal   = 10 * np.sin(np.linspace(0, 3 * np.pi, n_points) * 2)
+noise      = np.random.normal(0, 1.5, n_points)
+
+# Serie resultante
+data        = trend + seasonal + noise + 50
+time_series = pd.Series(data, index=index)
+
+plt.figure(figsize=(12, 6))
+plt.plot(time_series)
+plt.title('Serie de Tiempo Sintética')
+plt.xlabel('Fecha')
+plt.ylabel('Valor')
+plt.grid(True)
+plt.show()
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Ajuste del modelo SARIMA$(0,1,1)(0,1,1)_{12}$}]
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+order          = (0, 1, 1)
+seasonal_order = (0, 1, 1, 12)
+
+model     = SARIMAX(time_series, order=order, seasonal_order=seasonal_order,
+                    enforce_stationarity=False, enforce_invertibility=False)
+model_fit = model.fit(disp=False)
+
+print(model_fit.summary())
+\end{lstlisting}
+
+\subsection{Código: Pronóstico SARIMA}
+
+\begin{lstlisting}[caption={Pronóstico a 24 meses con SARIMA}]
+n_forecast = 24
+
+forecast = model_fit.predict(
+    start=len(time_series),
+    end=len(time_series) + n_forecast - 1
+)
+
+forecast_index = pd.date_range(
+    start=time_series.index[-1] + pd.DateOffset(months=1),
+    periods=n_forecast, freq='MS'
+)
+forecast.index = forecast_index
+
+plt.figure(figsize=(14, 7))
+plt.plot(time_series, label='Datos Originales')
+plt.plot(forecast, label='Pronóstico SARIMA', color='red', linestyle='--')
+plt.title('Serie Sintética con Pronóstico SARIMA')
+plt.xlabel('Fecha')
+plt.ylabel('Valor')
+plt.legend()
+plt.grid(True)
+plt.show()
+\end{lstlisting}
+
+\subsection{Código: Análisis de Residuos}
+
+\begin{lstlisting}[caption={Diagnóstico gráfico y estadístico de los residuos}]
+import seaborn as sns
+import statsmodels.api as sm
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+residuals = model_fit.resid
+
+# ── Gráficas de diagnóstico ────────────────────────────
+fig, axes = plt.subplots(3, 1, figsize=(16, 10))
+
+axes[0].plot(residuals)
+axes[0].set_title('Residuos a lo Largo del Tiempo')
+axes[0].grid(True)
+
+sns.histplot(residuals, kde=True, ax=axes[1])
+axes[1].set_title('Distribución de los Residuos')
+
+sm.qqplot(residuals, line='s', ax=axes[2])
+axes[2].set_title('Q-Q Plot de los Residuos')
+
+plt.tight_layout()
+plt.show()
+
+# ── ACF y PACF ────────────────────────────────────────
+fig2, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8))
+plot_acf(residuals,  lags=40, ax=ax1, zero=False)
+plot_pacf(residuals, lags=40, ax=ax2, zero=False)
+plt.tight_layout()
+plt.show()
+\end{lstlisting}
+
+\begin{resultado}
+  Para el modelo ajustado se esperan los siguientes valores en los tests del
+  \texttt{summary()}: Ljung-Box $p \approx 0.76$, Jarque-Bera $p \approx 0.53$,
+  Heteroscedasticidad $p \approx 0.64$. Todos son $> 0.05$, lo que indica que
+  los residuos se comportan como ruido blanco y el modelo es adecuado.
+\end{resultado}
+
+\subsection{Código: Pronóstico con Prophet}
+
+\begin{lstlisting}[caption={Ajuste y pronóstico con el modelo Prophet}]
+from prophet import Prophet
+
+# Prophet requiere columnas 'ds' (fecha) e 'y' (valor)
+prophet_df = time_series.reset_index()
+prophet_df.columns = ['ds', 'y']
+
+# Ajuste del modelo
+model_prophet = Prophet(yearly_seasonality=True)
+model_prophet.fit(prophet_df)
+
+# DataFrame de fechas futuras
+future = model_prophet.make_future_dataframe(periods=n_forecast, freq='MS')
+forecast_prophet = model_prophet.predict(future)
+
+# Columnas principales del pronóstico
+display(forecast_prophet[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail())
+
+# Visualización
+fig = model_prophet.plot(forecast_prophet)
+plt.title('Serie Sintética con Pronóstico de Prophet')
+plt.xlabel('Fecha')
+plt.ylabel('Valor')
+plt.show()
+
+# Descomposición de componentes
+fig2 = model_prophet.plot_components(forecast_prophet)
+plt.show()
+\end{lstlisting}
+
+\begin{nota}
+  Prophet descompone automáticamente el pronóstico en tendencia y
+  estacionalidad. Las columnas \texttt{yhat\_lower} y \texttt{yhat\_upper}
+  representan el intervalo de credibilidad al 80\,\% por defecto. A diferencia
+  de SARIMA, Prophet no requiere que la serie sea estacionaria ni que el
+  usuario especifique $p$, $d$, $q$.
+\end{nota}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   COMPARACIÓN DE MODELOS
+% ─────────────────────────────────────────────────────────
+\section{Comparación de Modelos}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{lcccc}
+  \toprule
+  \textbf{Característica} & \textbf{SARIMA} & \textbf{SARIMAX} & \textbf{Prophet} \\
+  \midrule
+  Variables exógenas       & No  & Sí  & Días festivos \\
+  Estacionalidad múltiple  & No  & No  & Sí \\
+  Requiere estacionariedad & Sí  & Sí  & No \\
+  Selección de hiperparámetros & Manual & Manual & Automática \\
+  Intervalo de predicción  & Frecuentista & Frecuentista & Bayesiano \\
+  Robusto a datos faltantes & No & No & Sí \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\newpage
+
+% ─────────────────────────────────────────────────────────
+%   DEPENDENCIAS
+% ─────────────────────────────────────────────────────────
+\section{Dependencias y Entorno}
+
+Las siguientes librerías de Python son necesarias para reproducir todos los
+notebooks:
+
+\begin{lstlisting}[language=bash, caption={Instalación de dependencias}]
+pip install numpy pandas matplotlib seaborn statsmodels yfinance altair prophet
+\end{lstlisting}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Librería} & \textbf{Uso principal} & \textbf{Versión recomendada} \\
+  \midrule
+  \texttt{numpy}       & Álgebra lineal y generación de datos & $\geq 1.24$ \\
+  \texttt{pandas}      & Manejo de series temporales & $\geq 2.0$ \\
+  \texttt{matplotlib}  & Visualización estática & $\geq 3.7$ \\
+  \texttt{seaborn}     & Visualización estadística & $\geq 0.12$ \\
+  \texttt{statsmodels} & SARIMA, ADF, ACF, PACF & $\geq 0.14$ \\
+  \texttt{yfinance}    & Descarga de datos financieros & $\geq 0.2$ \\
+  \texttt{altair}      & Gráficas interactivas & $\geq 5.0$ \\
+  \texttt{prophet}     & Modelo Prophet (Meta) & $\geq 1.1$ \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+% ─────────────────────────────────────────────────────────
+%   REFERENCIAS
+% ─────────────────────────────────────────────────────────
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+
+\begin{enumerate}[label={[\arabic*]}]
+  \item Box, G.E.P., Jenkins, G.M., Reinsel, G.C. \& Ljung, G.M. (2015).
+        \textit{Time Series Analysis: Forecasting and Control}. 5th ed. Wiley.
+  \item Hyndman, R.J. \& Athanasopoulos, G. (2021).
+        \textit{Forecasting: Principles and Practice}. 3rd ed. OTexts.
+        \url{https://otexts.com/fpp3/}
+  \item Taylor, S.J. \& Letham, B. (2018). Forecasting at Scale.
+        \textit{The American Statistician}, 72(1), 37--45.
+  \item Seabold, S. \& Perktold, J. (2010). Statsmodels: Econometric and
+        Statistical Modeling with Python. \textit{9th Python in Science Conf.}
+\end{enumerate}
+
+\end{document}

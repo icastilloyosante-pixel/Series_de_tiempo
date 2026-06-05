@@ -1,0 +1,174 @@
+
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{Series de Tiempo y Simulación Estocástica}
+\author{Iñaki Castillo}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introducción}
+
+Este documento resume y documenta los conceptos principales desarrollados en los notebooks:
+\begin{itemize}
+    \item Clase\_1.ipynb
+    \item Seasonality.ipynb
+    \item Series\_Financieras.ipynb
+    \item caminata\_aleat.ipynb
+\end{itemize}
+
+\section{Caminata Aleatoria}
+
+Una caminata aleatoria se define como:
+
+\begin{equation}
+X_t = X_{t-1} + Z_t
+\end{equation}
+
+donde:
+
+\begin{equation}
+Z_t \sim N(0,\sigma^2)
+\end{equation}
+
+\subsection{Propiedades}
+
+\begin{itemize}
+    \item No estacionaria en niveles.
+    \item La varianza aumenta con el tiempo.
+    \item Es ampliamente utilizada en finanzas.
+\end{itemize}
+
+La primera diferencia es:
+
+\begin{equation}
+\Delta X_t = X_t - X_{t-1}
+\end{equation}
+
+\section{Series Financieras}
+
+Para analizar activos financieros se utilizan retornos logarítmicos:
+
+\begin{equation}
+r_t=\ln\left(\frac{P_t}{P_{t-1}}\right)
+\end{equation}
+
+donde $P_t$ representa el precio en el periodo actual.
+
+\subsection{Ventajas}
+
+\begin{enumerate}
+    \item Son aditivos en el tiempo.
+    \item Facilitan el análisis estadístico.
+    \item Son estándar en finanzas cuantitativas.
+\end{enumerate}
+
+\section{Estacionalidad}
+
+Una serie temporal puede descomponerse como:
+
+\begin{equation}
+Y_t = T_t + S_t + E_t
+\end{equation}
+
+donde:
+
+\begin{itemize}
+    \item $T_t$: Tendencia.
+    \item $S_t$: Estacionalidad.
+    \item $E_t$: Error aleatorio.
+\end{itemize}
+
+\section{Modelo SARIMA}
+
+La notación general es:
+
+\begin{equation}
+(p,d,q)(P,D,Q)_m
+\end{equation}
+
+donde:
+
+\begin{itemize}
+    \item $p$: Autorregresivo.
+    \item $d$: Diferenciación.
+    \item $q$: Media móvil.
+    \item $P$: Autorregresivo estacional.
+    \item $D$: Diferenciación estacional.
+    \item $Q$: Media móvil estacional.
+    \item $m$: Periodicidad.
+\end{itemize}
+
+Modelo utilizado:
+
+\begin{equation}
+SARIMA(0,1,1)(0,1,1)_{12}
+\end{equation}
+
+\section{SARIMAX y Variables Exógenas}
+
+La incorporación de variables externas puede representarse como:
+
+\begin{equation}
+Y_t = SARIMA + \beta X_t
+\end{equation}
+
+donde $X_t$ representa factores externos relevantes.
+
+\section{Pronósticos}
+
+El objetivo del modelo es obtener:
+
+\begin{equation}
+\hat{Y}_{t+h}
+\end{equation}
+
+para distintos horizontes de predicción.
+
+\section{Análisis de Residuos}
+
+Los residuos se definen como:
+
+\begin{equation}
+e_t = Y_t - \hat{Y}_t
+\end{equation}
+
+Un modelo adecuado debe satisfacer:
+
+\begin{equation}
+E[e_t] = 0
+\end{equation}
+
+y
+
+\begin{equation}
+Cov(e_t,e_{t-k}) = 0
+\end{equation}
+
+para cualquier rezago $k$.
+
+\section{Conclusiones}
+
+Los notebooks analizados cubren fundamentos de:
+
+\begin{enumerate}
+    \item Caminatas aleatorias.
+    \item Series financieras.
+    \item Estacionalidad.
+    \item Modelos SARIMA y SARIMAX.
+    \item Pronósticos.
+    \item Diagnóstico de residuos.
+\end{enumerate}
+
+Estos conceptos constituyen herramientas esenciales para el análisis econométrico y financiero.
+
+\end{document}
